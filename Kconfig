@@ -1,17 +1,16 @@
-menu "U2F GUI app"
+menu "U2FPIN app"
 
 config APP_U2FPIN
-  bool "U2F GUI interface"
+  bool "U2FPIN GUI interface"
   depends on STM32F4
   default y
-  select USR_LIB_WOOKEY
   ---help---
     Say y if you want to embbed U2F NFC-based AUTH mechanism
 
 if APP_U2FPIN
 
 config APP_U2FPIN_FW
-  bool "Usb App for firmware mode"
+  bool "U2FPIN App for firmware mode"
   depends on APP_U2FPIN
   depends on STM32F4
   default y
@@ -21,14 +20,14 @@ config APP_U2FPIN_FW
 config APP_U2FPIN_HEAPSIZE
   int "task heap size in bytes"
   depends on APP_U2FPIN
-  default 1024
+  default 0
   ---help---
     specify the requested heap size in bytes.
 
 config APP_U2FPIN_STACKSIZE
   int "Stack size"
   depends on APP_U2FPIN
-  default 8192
+  default 4096
   ---help---
     Specify the application stack size, in bytes. By default, set to 8192
     (i.e. 8k). Depending on the number of slots required, and the usage,
@@ -44,24 +43,6 @@ config APP_U2FPIN_PRIO
     - Tasks of same priority are executed respecting a Round-Robin scheduling
     When using priority and RMA scheduling, please take care to yield()
     as much as possible to avoid deny of service to lower priority tasks
-
-choice
-  prompt "USB backend driver choice"
-  config APP_U2FPIN_USR_DRV_USB_HS
-     bool "use high speed backend driver"
-     select USR_DRV_USBOTGHS
-     select LIB_USBCTRL
-     ---help---
-       Use High speed backend driver for USB 2.0 performance level support
-       (upto theorical 480Mb/s)
-  config APP_U2FPIN_USR_DRV_USB_FS
-     bool "use full speed backend driver"
-     select USR_DRV_USBOTGFS
-     select LIB_USBCTRL
-     ---help---
-        new dynamic, hotpluggable and multi-interfaces USB stack with runtime interface(s) registration
-endchoice
-
 
 menu "Permissions"
     visible if APP_U2FPIN
@@ -90,14 +71,14 @@ config APP_U2FPIN_PERM_DEV_CRYPTO
 
 config APP_U2FPIN_PERM_DEV_BUSES
     bool "App has capacity to use buses (SPI, I2C, USART...)"
-    default n
+    default y
     ---help---
     If n, the application can't access any buses (I2C, SPI, USART).
     If y, the application can require a bus mapping.
 
 config APP_U2FPIN_PERM_DEV_EXTI
     bool "App can use EXTI or GPIO driven external interrupts"
-    default n
+    default y
 
 config APP_U2FPIN_PERM_DEV_TIM
     bool "App can register a hardware timer"
@@ -113,7 +94,7 @@ menu "Time"
 
 config APP_U2FPIN_PERM_TIM_GETCYCLES
     int "App has capacity to get current timestamp from kernel"
-    default 0
+    default 1
     range 0 3
     ---help---
     If 0, the application has no access to timestamping.
@@ -172,7 +153,7 @@ menu "Memory management"
 
 config APP_U2FPIN_PERM_MEM_DYNAMIC_MAP
     bool "App is allow to declare MAP_VOLUNTARY devices"
-    default n
+    default y
     ---help---
     If y, the task is allowed to declare devices that are not automatically
     mapped, but that are mapped/unmapped voluntary using sys_cfg() syscalls.
