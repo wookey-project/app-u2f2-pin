@@ -23,6 +23,7 @@
 #  include "main.h"
 
 #include "gui_pin.h"
+#include "libu2f2.h"
 
 #include "libc/sanhandlers.h"
 
@@ -32,6 +33,23 @@ int get_fido_msq(void) {
     return fido_msq;
 }
 
+
+bool handle_user_presence(void) {
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
+    tft_fill_rectangle(0,240,0,320,0x0,0x0,0x0);
+    tft_setfg(0xff, 0xff, 0xff);
+    tft_set_cursor_pos(100, 150);
+    tft_puts("[X]");
+    /* wait for touchscreen */
+    while (!touch_is_touched()) {
+        ;
+    }
+#else
+    printf("[USB] userpresence: waiting for %d ms\n", timeout/2);
+    sys_sleep (timeout, SLEEP_MODE_INTERRUPTIBLE);
+#endif
+    return true;
+}
 
 
 /******************************************************
@@ -143,8 +161,25 @@ int _main(uint32_t task_id)
     msgsnd(fido_msq, &msgbuf, 0, 0);
 
 
+    /* main loop */
+    ssize_t msqr;
     while (1) {
+        msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_USER_PRESENCE_REQ, IPC_NOWAIT);
+        if (msqr >= 0) {
+            /* Wink request received */
+            log_printf("[PARSER] received MAGIC_WINK_REQ from USB\n");
+            /* check for other waiting msg before sleeping */
+            if (handle_user_presence()) {
+                msgbuf.mtype = MAGIC_USER_PRESENCE_ACK;
+                msgsnd(fido_msq, &msgbuf, 0, 0);
+            }
+            goto endloop;
+        }
+
+
         sys_sleep(1000, SLEEP_MODE_INTERRUPTIBLE);
+endloop:
+        continue;
     }
 
     return 0;
