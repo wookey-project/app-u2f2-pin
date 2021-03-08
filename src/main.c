@@ -26,10 +26,10 @@
 
 #include "libc/sanhandlers.h"
 
-int usb_msq = 0;
+int fido_msq = 0;
 
-int get_usb_msq(void) {
-    return usb_msq;
+int get_fido_msq(void) {
+    return fido_msq;
 }
 
 
@@ -46,8 +46,8 @@ int _main(uint32_t task_id)
 
     printf("Hello ! I'm u2fpin, my id is %x\n", task_id);
 
-    usb_msq = msgget("usb", IPC_CREAT | IPC_EXCL);
-    if (usb_msq == -1) {
+    fido_msq = msgget("fido", IPC_CREAT | IPC_EXCL);
+    if (fido_msq == -1) {
         printf("error while requesting SysV message queue. Errno=%x\n", errno);
         goto err;
     }
@@ -135,12 +135,12 @@ int _main(uint32_t task_id)
     /* get back auth request from user and acknowledge */
     struct msgbuf msgbuf = { 0 };
 
-    if (msgrcv(usb_msq, &msgbuf.mtext, 0, MAGIC_PIN_CONFIRM_UNLOCK, 0) == -1) {
+    if (msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_PIN_CONFIRM_UNLOCK, 0) == -1) {
         printf("failed to recv CONFIRM_UNLOCK from usb! erro=%d\n", errno);
         goto err;
     }
     msgbuf.mtype = MAGIC_PIN_UNLOCK_CONFIRMED;
-    msgsnd(usb_msq, &msgbuf, 0, 0);
+    msgsnd(fido_msq, &msgbuf, 0, 0);
 
 
     while (1) {
