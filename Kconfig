@@ -9,6 +9,8 @@ config APP_U2FPIN
 
 if APP_U2FPIN
 
+
+
 config APP_U2FPIN_FW
   bool "U2FPIN App for firmware mode"
   depends on APP_U2FPIN
@@ -43,6 +45,63 @@ config APP_U2FPIN_PRIO
     - Tasks of same priority are executed respecting a Round-Robin scheduling
     When using priority and RMA scheduling, please take care to yield()
     as much as possible to avoid deny of service to lower priority tasks
+
+
+
+menu "U2FPin specific properties"
+
+config APP_U2FPIN_MAX_PINTRIES
+  int "Max number of PIN try before reset"
+  range 1 3
+  default 3
+  ---help---
+  Maximum number of allowed Pin try before reseting the board.
+  This does not impact how the javacard manages the Max pintry
+  in its internal policy, but only the number of time the Pin
+  Pad is presented before reseting the card
+
+choice
+  prompt "PIN human interaction mode"
+  depends on APP_U2FPIN
+  default APP_U2FPIN_INPUT_SCREEN
+    config APP_U2FPIN_INPUT_SCREEN
+      bool "PIN is asked through graphical interface"
+      select USR_LIB_GUI
+      select USR_DRV_SPI
+      select USR_DRV_AD7843
+      select USR_DRV_ILI9341
+      ---help---
+      User interaction for PIN ask is done using dedicated
+      screen/touchscreen couple
+    config APP_U2FPIN_INPUT_MOCKUP
+      bool "PIN is in mockup mode (no user interaction)"
+      ---help---
+      User interaction for PIN is not needed, which means
+      that the pin is hardcoded in the source code for test
+      mode instead of asked to the user
+endchoice
+
+
+if APP_U2FPIN_INPUT_MOCKUP
+
+config APP_U2FPIN_MOCKUP_USER_PIN_VALUE
+   string "Mockup user pin value"
+   ---help---
+   User Pin value that should be used in replacement of the PIN
+   entered by the user.
+   You can enter directly the numeric pin value here.
+
+config APP_U2FPIN_MOCKUP_PET_PIN_VALUE
+   string "Mockup pet-pin value"
+   ---help---
+   Pet Pin value that should be used in replacement of the
+   Pet PIN entered by the user.
+   You can enter directly the numeric value here.
+
+endif
+
+endmenu
+
 
 menu "Permissions"
     visible if APP_U2FPIN

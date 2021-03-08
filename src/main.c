@@ -12,14 +12,27 @@
 #include "libc/stdio.h"
 #include "libc/nostd.h"
 #include "libc/string.h"
+#include "libc/sys/msg.h"
+#include "libc/errno.h"
 
 
 #  include "fido.h"
 #  include "libspi.h"
 #  include "libtouch.h"
 #  include "libtft.h"
+#  include "main.h"
+
+#include "gui_pin.h"
 
 #include "libc/sanhandlers.h"
+
+int usb_msq = 0;
+
+int get_usb_msq(void) {
+    return usb_msq;
+}
+
+
 
 /******************************************************
  * The task main function, called by do_starttask().
@@ -32,6 +45,13 @@ int _main(uint32_t task_id)
     uint8_t ret;
 
     printf("Hello ! I'm u2fpin, my id is %x\n", task_id);
+
+    usb_msq = msgget("usb", IPC_CREAT | IPC_EXCL);
+    if (usb_msq == -1) {
+        printf("error while requesting SysV message queue. Errno=%x\n", errno);
+        goto err;
+    }
+
 
     /* graphical mode: declaring graphical devices */
 
@@ -69,6 +89,7 @@ int _main(uint32_t task_id)
     if ((ret = sys_init(INIT_DONE))) {
         printf("sys_init returns %s !\n", strerror(ret));
         goto err;
+
     }
 
     /*******************************************
@@ -87,6 +108,40 @@ int _main(uint32_t task_id)
         tft_fill_rectangle(0,240,0,320,0xff,0xff,0xff);
         /* FIDO logo */
         tft_rle_image(0,0,fido_width,fido_height,fido_colormap,fido,sizeof(fido));
+
+    /* here we request PIN from user */
+
+
+
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
+    bool auth_validated = false;
+    uint8_t num_auth = 0;
+    do {
+        if (num_auth >= CONFIG_APP_U2FPIN_MAX_PINTRIES) {
+            sys_reset();
+        }
+        uint8_t pin_len = 15;
+        char pin[16] = { 0 };
+        pin_len = pin_request_digits("Unlock U2F2", 14, 0,240,60,320,pin,15);
+        if (strncmp(pin, "1234", 4) == 0) {
+            auth_validated = true;
+        }
+        num_auth++;
+    } while (!auth_validated);
+#else/* MOCKUP */
+    printf("Mockup mode: UNLOCKED!\n");
+#endif
+
+    /* get back auth request from user and acknowledge */
+    struct msgbuf msgbuf = { 0 };
+
+    if (msgrcv(usb_msq, &msgbuf.mtext, 0, MAGIC_PIN_CONFIRM_UNLOCK, 0) == -1) {
+        printf("failed to recv CONFIRM_UNLOCK from usb! erro=%d\n", errno);
+        goto err;
+    }
+    msgbuf.mtype = MAGIC_PIN_UNLOCK_CONFIRMED;
+    msgsnd(usb_msq, &msgbuf, 0, 0);
+
 
     while (1) {
         sys_sleep(1000, SLEEP_MODE_INTERRUPTIBLE);
