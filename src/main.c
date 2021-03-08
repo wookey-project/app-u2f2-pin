@@ -112,17 +112,25 @@ int _main(uint32_t task_id)
     /* here we request PIN from user */
 
 
-    bool auth_validated = false;
 
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
+    bool auth_validated = false;
+    uint8_t num_auth = 0;
     do {
+        if (num_auth >= CONFIG_APP_U2FPIN_MAX_PINTRIES) {
+            sys_reset();
+        }
         uint8_t pin_len = 15;
         char pin[16] = { 0 };
         pin_len = pin_request_digits("Unlock U2F2", 14, 0,240,60,320,pin,15);
         if (strncmp(pin, "1234", 4) == 0) {
             auth_validated = true;
         }
-
+        num_auth++;
     } while (!auth_validated);
+#else/* MOCKUP */
+    printf("Mockup mode: UNLOCKED!\n");
+#endif
 
     /* get back auth request from user and acknowledge */
     struct msgbuf msgbuf = { 0 };
