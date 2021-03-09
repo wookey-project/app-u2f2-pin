@@ -45,8 +45,8 @@ bool handle_user_presence(void) {
         ;
     }
 #else
-    printf("[USB] userpresence: waiting for %d ms\n", timeout/2);
-    sys_sleep (timeout, SLEEP_MODE_INTERRUPTIBLE);
+    printf("[USB] userpresence: waiting for XX (FIX: timeout to add)\n");
+    sys_sleep (1000, SLEEP_MODE_INTERRUPTIBLE);
 #endif
     return true;
 }
@@ -142,13 +142,13 @@ int _main(uint32_t task_id)
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_PETPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
             log_printf("[u2fPIN] Pet PIN requested\n");
-#if CONFIG_APP_U2FPIN_INPUT_SCREEN
             uint8_t pin_len = 15;
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
             char pin[16] = { 0 };
             pin_len = pin_request_digits("Pet PIN", 14, 0,240,60,320,pin,15);
             strncpy(&msgbuf.mtext.c[0], pin, pin_len);
 #else
-            strcmp(&pin[0], CONFIG_APP_U2FPIN_MOCKUP_PET_PIN_VALUE);
+            strcpy(&msgbuf.mtext.c[0], CONFIG_APP_U2FPIN_MOCKUP_PET_PIN_VALUE);
             pin_len = strlen(CONFIG_APP_U2FPIN_MOCKUP_PET_PIN_VALUE);
 #endif
             msgbuf.mtype = MAGIC_PETPIN_INSERTED;
@@ -175,13 +175,13 @@ int _main(uint32_t task_id)
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_USERPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
             log_printf("[u2fPIN] User PIN requested\n");
-#if CONFIG_APP_U2FPIN_INPUT_SCREEN
             uint8_t pin_len = 15;
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
             char pin[16] = { 0 };
             pin_len = pin_request_digits("User PIN", 14, 0,240,60,320,pin,15);
             strncpy(&msgbuf.mtext.c[0], pin, pin_len);
 #else
-            strcmp(&pin[0], CONFIG_APP_U2FPIN_MOCKUP_USER_PIN_VALUE);
+            strcpy(&msgbuf.mtext.c[0], CONFIG_APP_U2FPIN_MOCKUP_USER_PIN_VALUE);
             pin_len = strlen(CONFIG_APP_U2FPIN_MOCKUP_USER_PIN_VALUE);
 #endif
             msgbuf.mtype = MAGIC_USERPIN_INSERTED;
