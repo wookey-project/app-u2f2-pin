@@ -127,47 +127,72 @@ int _main(uint32_t task_id)
         /* FIDO logo */
         tft_rle_image(0,0,fido_width,fido_height,fido_colormap,fido,sizeof(fido));
 
-    /* here we request PIN from user */
-
-
-
-#if CONFIG_APP_U2FPIN_INPUT_SCREEN
-    bool auth_validated = false;
-    uint8_t num_auth = 0;
-    do {
-        if (num_auth >= CONFIG_APP_U2FPIN_MAX_PINTRIES) {
-            sys_reset();
-        }
-        uint8_t pin_len = 15;
-        char pin[16] = { 0 };
-        pin_len = pin_request_digits("Unlock U2F2", 14, 0,240,60,320,pin,15);
-        if (strncmp(pin, "1234", 4) == 0) {
-            auth_validated = true;
-        }
-        num_auth++;
-    } while (!auth_validated);
-#else/* MOCKUP */
-    printf("Mockup mode: UNLOCKED!\n");
-#endif
-
-    /* get back auth request from user and acknowledge */
-    struct msgbuf msgbuf = { 0 };
-
-    if (msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_PIN_CONFIRM_UNLOCK, 0) == -1) {
-        printf("failed to recv CONFIRM_UNLOCK from usb! erro=%d\n", errno);
+    /* acknowledge that u2fpin backend is now ready */
+    if (handle_signal(fido_msq, MAGIC_IS_BACKEND_READY, MAGIC_BACKEND_IS_READY, NULL) != MBED_ERROR_NONE) {
+        printf("failed to handle signal!\n");
         goto err;
     }
-    msgbuf.mtype = MAGIC_PIN_UNLOCK_CONFIRMED;
-    msgsnd(fido_msq, &msgbuf, 0, 0);
 
 
     /* main loop */
+    struct msgbuf msgbuf = { 0 };
     ssize_t msqr;
     while (1) {
+        // PetPin
+        msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_PETPIN_INSERT, IPC_NOWAIT);
+        if (msqr >= 0) {
+            log_printf("[u2fPIN] Pet PIN requested\n");
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
+            uint8_t pin_len = 15;
+            char pin[16] = { 0 };
+            pin_len = pin_request_digits("Pet PIN", 14, 0,240,60,320,pin,15);
+            strncpy(&msgbuf.mtext.c[0], pin, pin_len);
+#else
+            strcmp(&pin[0], CONFIG_APP_U2FPIN_MOCKUP_PET_PIN_VALUE);
+            pin_len = strlen(CONFIG_APP_U2FPIN_MOCKUP_PET_PIN_VALUE);
+#endif
+            msgbuf.mtype = MAGIC_PETPIN_INSERTED;
+            msgsnd(fido_msq, &msgbuf, pin_len, 0);
+            goto endloop;
+        }
+        // PassPhrase check
+        msqr = msgrcv(fido_msq, &msgbuf.mtext, 64, MAGIC_PASSPHRASE_CONFIRM, IPC_NOWAIT);
+        if (msqr >= 0) {
+            log_printf("[u2fPIN] Pet name check requested\n");
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
+            msgbuf.mtext.u8[0] = 0x00; /* false by default*/
+            if (pin_request_string_validation("Pet name", &msgbuf.mtext.c[0], msqr) == 0) {
+                msgbuf.mtext.u8[0] = 0xff;
+            }
+#else
+            msgbuf.mtext.u8[0] = 0xff;
+#endif
+            msgbuf.mtype = MAGIC_PASSPHRASE_RESULT;
+            msgsnd(fido_msq, &msgbuf, 1, 0);
+            goto endloop;
+        }
+        // UserPin
+        msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_USERPIN_INSERT, IPC_NOWAIT);
+        if (msqr >= 0) {
+            log_printf("[u2fPIN] User PIN requested\n");
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
+            uint8_t pin_len = 15;
+            char pin[16] = { 0 };
+            pin_len = pin_request_digits("User PIN", 14, 0,240,60,320,pin,15);
+            strncpy(&msgbuf.mtext.c[0], pin, pin_len);
+#else
+            strcmp(&pin[0], CONFIG_APP_U2FPIN_MOCKUP_USER_PIN_VALUE);
+            pin_len = strlen(CONFIG_APP_U2FPIN_MOCKUP_USER_PIN_VALUE);
+#endif
+            msgbuf.mtype = MAGIC_USERPIN_INSERTED;
+            msgsnd(fido_msq, &msgbuf, pin_len, 0);
+            goto endloop;
+        }
+        // User Presence
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_USER_PRESENCE_REQ, IPC_NOWAIT);
         if (msqr >= 0) {
             /* Wink request received */
-            log_printf("[PARSER] received MAGIC_WINK_REQ from USB\n");
+            log_printf("[u2fPIN] User Presence requested\n");
             /* check for other waiting msg before sleeping */
             if (handle_user_presence()) {
                 msgbuf.mtype = MAGIC_USER_PRESENCE_ACK;
