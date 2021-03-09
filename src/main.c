@@ -141,7 +141,7 @@ int _main(uint32_t task_id)
         // PetPin
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_PETPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
-            log_printf("[u2fPIN] Pet PIN requested\n");
+            printf("[u2fPIN] Pet PIN requested\n");
             uint8_t pin_len = 15;
 #if CONFIG_APP_U2FPIN_INPUT_SCREEN
             char pin[16] = { 0 };
@@ -158,7 +158,7 @@ int _main(uint32_t task_id)
         // PassPhrase check
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 64, MAGIC_PASSPHRASE_CONFIRM, IPC_NOWAIT);
         if (msqr >= 0) {
-            log_printf("[u2fPIN] Pet name check requested\n");
+            printf("[u2fPIN] Pet name check requested\n");
 #if CONFIG_APP_U2FPIN_INPUT_SCREEN
             msgbuf.mtext.u8[0] = 0x00; /* false by default*/
             if (pin_request_string_validation("Pet name", &msgbuf.mtext.c[0], msqr) == 0) {
@@ -174,7 +174,7 @@ int _main(uint32_t task_id)
         // UserPin
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_USERPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
-            log_printf("[u2fPIN] User PIN requested\n");
+            printf("[u2fPIN] User PIN requested\n");
             uint8_t pin_len = 15;
 #if CONFIG_APP_U2FPIN_INPUT_SCREEN
             char pin[16] = { 0 };
@@ -192,7 +192,7 @@ int _main(uint32_t task_id)
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_USER_PRESENCE_REQ, IPC_NOWAIT);
         if (msqr >= 0) {
             /* Wink request received */
-            log_printf("[u2fPIN] User Presence requested\n");
+            printf("[u2fPIN] User Presence requested\n");
             /* check for other waiting msg before sleeping */
             if (handle_user_presence()) {
                 msgbuf.mtype = MAGIC_USER_PRESENCE_ACK;

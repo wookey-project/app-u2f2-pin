@@ -41,7 +41,7 @@ CFLAGS += -Isrc/ -Isrc/img -MMD -MP -Os
 LDFLAGS += $(EXTRA_LDFLAGS) -L$(APP_BUILD_DIR)
 
 # select libraries depending on current mode INPUT configuration
-LD_LIBS +=  -Wl,--start-group -lspi -lad7843 -lili9341 -Wl,-lhmac -Wl,-lgui -Wl,-lstd -Wl,-lsign -Wl,--end-group
+LD_LIBS +=  -Wl,--start-group -Wl,-lu2f2 -Wl,-lspi -Wl,-lad7843 -Wl,-lili9341 -Wl,-lhmac -Wl,-lgui -Wl,-lstd -Wl,-lsign -Wl,--end-group
 
 ###################################################################
 # okay let's list our source files and generated files now
@@ -77,6 +77,7 @@ TODEL_DISTCLEAN += $(APP_BUILD_DIR) $(LDSCRIPT_NAME)
 ## library dependencies
 LIBDEP := $(BUILD_DIR)/libs/libstd/libstd.a \
           $(BUILD_DIR)/libs/libgui/libgui.a \
+          $(BUILD_DIR)/libs/libu2f2/libu2f2.a \
           $(BUILD_DIR)/libs/libhmac/libhmac.a
 
 libdep: $(LIBDEP)
