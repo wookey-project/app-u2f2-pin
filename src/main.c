@@ -158,7 +158,7 @@ int _main(uint32_t task_id)
         // PassPhrase check
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 64, MAGIC_PASSPHRASE_CONFIRM, IPC_NOWAIT);
         if (msqr >= 0) {
-            printf("[u2fPIN] Pet name check requested\n");
+            printf("[u2fPIN] Pet name check requested: %s\n", &msgbuf.mtext.c[0]);
 #if CONFIG_APP_U2FPIN_INPUT_SCREEN
             msgbuf.mtext.u8[0] = 0x00; /* false by default*/
             if (pin_request_string_validation("Pet name", &msgbuf.mtext.c[0], msqr) == 0) {
