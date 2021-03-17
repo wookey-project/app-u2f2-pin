@@ -14,6 +14,7 @@
 #include "libc/string.h"
 #include "libc/sys/msg.h"
 #include "libc/errno.h"
+#include "libc/nostd.h"
 
 
 #  include "fido.h"
@@ -95,7 +96,7 @@ int _main(uint32_t task_id)
             ;
     }
 
-    printf("Registered SPI1, Touchscreen and TFT.\n");
+    printf("Registered SPI, Touchscreen and TFT.\n");
     /* get back smart task id, as we communicate with it */
 
     /*******************************************
@@ -121,11 +122,14 @@ int _main(uint32_t task_id)
     if (touch_init()) {
         printf("error during Touch initialization!\n");
     }
+
+    printf("set screen bootimg\n");
     /* Register our callback as a valid one */
-        /* white background */
-        tft_fill_rectangle(0,240,0,320,0xff,0xff,0xff);
-        /* FIDO logo */
-        tft_rle_image(0,0,fido_width,fido_height,fido_colormap,fido,sizeof(fido));
+    tft_fill_rectangle(0,240,0,320,0xff,0xff,0xff);
+    /* FIDO logo */
+    tft_rle_image(0,0,fido_width,fido_height,fido_colormap,fido,sizeof(fido));
+
+    printf("wait for FIDO tsk\n");
 
     /* acknowledge that u2fpin backend is now ready */
     if (handle_signal(fido_msq, MAGIC_IS_BACKEND_READY, MAGIC_BACKEND_IS_READY, NULL) != MBED_ERROR_NONE) {
@@ -133,6 +137,7 @@ int _main(uint32_t task_id)
         goto err;
     }
 
+    printf("starting main loop\n");
 
     /* main loop */
     struct msgbuf msgbuf = { 0 };
