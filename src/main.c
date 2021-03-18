@@ -22,8 +22,8 @@
 #  include "libtouch.h"
 #  include "libtft.h"
 #  include "main.h"
+#  include "graphic.h"
 
-#include "gui_pin.h"
 #include "libu2f2.h"
 
 #include "libc/sanhandlers.h"
@@ -147,50 +147,21 @@ int _main(uint32_t task_id)
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_PETPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
             printf("[u2fPIN] Pet PIN requested\n");
-            uint8_t pin_len = 15;
-#if CONFIG_APP_U2FPIN_INPUT_SCREEN
-            char pin[16] = { 0 };
-            pin_len = pin_request_digits("Pet PIN", 14, 0,240,60,320,pin,15);
-            strncpy(&msgbuf.mtext.c[0], pin, pin_len);
-#else
-            strcpy(&msgbuf.mtext.c[0], CONFIG_APP_U2FPIN_MOCKUP_PET_PIN_VALUE);
-            pin_len = strlen(CONFIG_APP_U2FPIN_MOCKUP_PET_PIN_VALUE);
-#endif
-            msgbuf.mtype = MAGIC_PETPIN_INSERTED;
-            msgsnd(fido_msq, &msgbuf, pin_len, 0);
+            handle_pin(MAGIC_PETPIN_INSERT);
             goto endloop;
         }
         // PassPhrase check
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 64, MAGIC_PASSPHRASE_CONFIRM, IPC_NOWAIT);
         if (msqr >= 0) {
-            printf("[u2fPIN] Pet name check requested: %s\n", &msgbuf.mtext.c[0]);
-#if CONFIG_APP_U2FPIN_INPUT_SCREEN
-            msgbuf.mtext.u8[0] = 0x00; /* false by default*/
-            if (pin_request_string_validation("Pet name", &msgbuf.mtext.c[0], msqr) == 0) {
-                msgbuf.mtext.u8[0] = 0xff;
-            }
-#else
-            msgbuf.mtext.u8[0] = 0xff;
-#endif
-            msgbuf.mtype = MAGIC_PASSPHRASE_RESULT;
-            msgsnd(fido_msq, &msgbuf, 1, 0);
+            printf("[u2fPIN] Pet name check requested (len:%d): %s\n", msqr, &msgbuf.mtext.c[0]);
+            handle_petname_check(&msgbuf.mtext.c[0], msqr);
             goto endloop;
         }
         // UserPin
         msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_USERPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
             printf("[u2fPIN] User PIN requested\n");
-            uint8_t pin_len = 15;
-#if CONFIG_APP_U2FPIN_INPUT_SCREEN
-            char pin[16] = { 0 };
-            pin_len = pin_request_digits("User PIN", 14, 0,240,60,320,pin,15);
-            strncpy(&msgbuf.mtext.c[0], pin, pin_len);
-#else
-            strcpy(&msgbuf.mtext.c[0], CONFIG_APP_U2FPIN_MOCKUP_USER_PIN_VALUE);
-            pin_len = strlen(CONFIG_APP_U2FPIN_MOCKUP_USER_PIN_VALUE);
-#endif
-            msgbuf.mtype = MAGIC_USERPIN_INSERTED;
-            msgsnd(fido_msq, &msgbuf, pin_len, 0);
+            handle_pin(MAGIC_USERPIN_INSERT);
             goto endloop;
         }
         // User Presence
@@ -205,6 +176,14 @@ int _main(uint32_t task_id)
             }
             goto endloop;
         }
+        msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_TOKEN_UNLOCKED, IPC_NOWAIT);
+        if (msqr >= 0) {
+            /* Wink request received */
+            printf("[u2fPIN] token unlocked\n");
+            tft_rle_image(0,0,fido_width,fido_height,fido_colormap,fido,sizeof(fido));
+            goto endloop;
+        }
+
 
 
         sys_sleep(1000, SLEEP_MODE_INTERRUPTIBLE);
