@@ -36,11 +36,13 @@ int get_fido_msq(void) {
 }
 
 
-bool handle_user_presence(uint16_t timeout) {
+bool handle_user_presence(uint16_t timeout __attribute__((unused))) {
     mbed_error_t errcode = MBED_ERROR_NONE;
     bool result = false;
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
     uint64_t st = 0;
     uint64_t st_curr = 0;
+#endif
     uint8_t appid[32] = { 0 };
     fidostorage_appid_slot_t appid_info = { 0 };
     uint8_t **icon = NULL;
@@ -78,7 +80,9 @@ bool handle_user_presence(uint16_t timeout) {
     printf("[USB] userpresence: waiting for XX (FIX: timeout to add)\n");
     sys_sleep (1000, SLEEP_MODE_INTERRUPTIBLE);
 #endif
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
 err:
+#endif
     if (icon != NULL) {
         wfree((void**)icon);
     }
