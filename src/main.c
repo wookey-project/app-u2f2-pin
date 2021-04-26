@@ -182,28 +182,28 @@ int _main(uint32_t task_id)
     ssize_t msqr;
     while (1) {
         // PetPin
-        msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_PETPIN_INSERT, IPC_NOWAIT);
+        msqr = msgrcv(fido_msq, &msgbuf, 0, MAGIC_PETPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
             printf("[u2fPIN] Pet PIN requested\n");
             handle_pin(MAGIC_PETPIN_INSERT);
             goto endloop;
         }
         // PassPhrase check
-        msqr = msgrcv(fido_msq, &msgbuf.mtext, 64, MAGIC_PASSPHRASE_CONFIRM, IPC_NOWAIT);
+        msqr = msgrcv(fido_msq, &msgbuf, 64, MAGIC_PASSPHRASE_CONFIRM, IPC_NOWAIT);
         if (msqr >= 0) {
             printf("[u2fPIN] Pet name check requested (len:%d): %s\n", msqr, &msgbuf.mtext.c[0]);
             handle_petname_check(&msgbuf.mtext.c[0], msqr);
             goto endloop;
         }
         // UserPin
-        msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_USERPIN_INSERT, IPC_NOWAIT);
+        msqr = msgrcv(fido_msq, &msgbuf, 0, MAGIC_USERPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
             printf("[u2fPIN] User PIN requested\n");
             handle_pin(MAGIC_USERPIN_INSERT);
             goto endloop;
         }
         // User Presence
-        msqr = msgrcv(fido_msq, &msgbuf.mtext, 2, MAGIC_USER_PRESENCE_REQ, IPC_NOWAIT);
+        msqr = msgrcv(fido_msq, &msgbuf, 2, MAGIC_USER_PRESENCE_REQ, IPC_NOWAIT);
         if (msqr >= 0) {
             printf("[u2fpin] received user presence req from FIDO\n");
             uint16_t timeout = msgbuf.mtext.u16[0];
@@ -220,7 +220,7 @@ int _main(uint32_t task_id)
             msgsnd(fido_msq, &msgbuf, 2, 0);
             goto endloop;
         }
-        msqr = msgrcv(fido_msq, &msgbuf.mtext, 0, MAGIC_TOKEN_UNLOCKED, IPC_NOWAIT);
+        msqr = msgrcv(fido_msq, &msgbuf, 0, MAGIC_TOKEN_UNLOCKED, IPC_NOWAIT);
         if (msqr >= 0) {
             /* Wink request received */
             printf("[u2fPIN] token unlocked\n");
