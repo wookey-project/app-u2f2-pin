@@ -26,6 +26,7 @@
 #  include "graphic.h"
 
 #include "libu2f2.h"
+#include "libfidostorage.h"
 
 #include "libc/sanhandlers.h"
 
@@ -45,18 +46,14 @@ bool handle_user_presence(uint16_t timeout __attribute__((unused))) {
 #endif
     uint8_t appid[32] = { 0 };
     fidostorage_appid_slot_t appid_info = { 0 };
-    uint8_t **icon = NULL;
+    uint8_t *icon = NULL;
 
     /* here (in u2fpin) we use appid==0 because fido is already aware of the appid to handle and will return the cached information of the
      * current request */
-    errcode = request_appid_metada(fido_msq, appid, &appid_info, icon);
+    errcode = request_appid_metada(fido_msq, appid, &appid_info, &icon);
     /* now we have received the overall appid info */
 
-    printf("[u2fPIN] User Presence requested\n");
-    printf("[u2fpin] name: %s\n", appid_info.name);
-    printf("[u2fpin] CTR: %d\n", appid_info.ctr);
-    printf("[u2fpin] icon_type: %d\n", appid_info.icon_type);
-    printf("[u2fpin] icon_len: %d\n", appid_info.icon_type);
+    fidostorage_dump_slot(&appid_info);
 
 #if CONFIG_APP_U2FPIN_INPUT_SCREEN
     tft_fill_rectangle(0,240,0,320,0x0,0x0,0x0);
@@ -203,7 +200,7 @@ int _main(uint32_t task_id)
             goto endloop;
         }
         // User Presence
-        msqr = msgrcv(fido_msq, &msgbuf, 2, MAGIC_USER_PRESENCE_REQ, IPC_NOWAIT);
+        msqr = msgrcv(fido_msq, &msgbuf, 32, MAGIC_USER_PRESENCE_REQ, IPC_NOWAIT);
         if (msqr >= 0) {
             printf("[u2fpin] received user presence req from FIDO\n");
             uint16_t timeout = msgbuf.mtext.u16[0];
@@ -228,9 +225,7 @@ int _main(uint32_t task_id)
             goto endloop;
         }
 
-
-
-        sys_sleep(1000, SLEEP_MODE_INTERRUPTIBLE);
+        sys_sleep(500, SLEEP_MODE_INTERRUPTIBLE);
 endloop:
         continue;
     }
