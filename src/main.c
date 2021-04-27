@@ -20,8 +20,8 @@
 
 #  include "fido.h"
 #  include "libspi.h"
-#  include "libtouch.h"
 #  include "libtft.h"
+#  include "libtouch.h"
 #  include "main.h"
 #  include "graphic.h"
 
@@ -37,13 +37,9 @@ int get_fido_msq(void) {
 }
 
 
-bool handle_user_presence(uint16_t timeout __attribute__((unused))) {
+bool handle_user_presence(uint16_t timeout __attribute__((unused)), uint16_t action) {
     mbed_error_t errcode = MBED_ERROR_NONE;
     bool result = false;
-#if CONFIG_APP_U2FPIN_INPUT_SCREEN
-    uint64_t st = 0;
-    uint64_t st_curr = 0;
-#endif
     uint8_t appid[32] = { 0 };
     fidostorage_appid_slot_t appid_info = { 0 };
     uint8_t *icon = NULL;
@@ -56,34 +52,17 @@ bool handle_user_presence(uint16_t timeout __attribute__((unused))) {
     fidostorage_dump_slot(&appid_info);
 
 #if CONFIG_APP_U2FPIN_INPUT_SCREEN
-    tft_fill_rectangle(0,240,0,320,0x0,0x0,0x0);
-    tft_setfg(0xff, 0xff, 0xff);
-    tft_set_cursor_pos(10, 110);
-    tft_set_cursor_pos(100, 150);
-    tft_puts("[X]");
-    /* wait for touchscreen */
-
-    printf("[u2fpin] handle user presence, timeout is %d\n", timeout);
-    sys_get_systick(&st, PREC_MILLI);
-    while (!touch_is_touched()) {
-        sys_get_systick(&st_curr, PREC_MILLI);
-        if ((st_curr - st) >= timeout) {
-            printf("[U2FPIN] userpresence timeouted !\n");
-            goto err;
-        }
-    }
-    result = true;
+    result = request_user_presence(action, timeout, &appid_info, icon);
 #else
     printf("[USB] userpresence: waiting for XX (FIX: timeout to add)\n");
     sys_sleep (1000, SLEEP_MODE_INTERRUPTIBLE);
 #endif
-#if CONFIG_APP_U2FPIN_INPUT_SCREEN
-err:
-#endif
     if (icon != NULL) {
         wfree((void**)icon);
     }
-    tft_fill_rectangle(0,240,0,320,0x10,0x71,0xaa);
+    if (result == true) {
+        tft_fill_rectangle(0,240,0,320,0x10,0x71,0xaa);
+    }
     return result;
 }
 
@@ -204,8 +183,9 @@ int _main(uint32_t task_id)
         if (msqr >= 0) {
             printf("[u2fpin] received user presence req from FIDO\n");
             uint16_t timeout = msgbuf.mtext.u16[0];
+            uint16_t action = msgbuf.mtext.u16[1];
             bool result;
-            result = handle_user_presence(timeout);
+            result = handle_user_presence(timeout, action);
             msgbuf.mtype = MAGIC_USER_PRESENCE_ACK;
             if (result == true) {
                 msgbuf.mtext.u16[0] = 0x4242;
