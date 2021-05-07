@@ -135,7 +135,7 @@ bool request_user_presence(u2f_fido_action  action, uint16_t timeout, fidostorag
 
                 tft_rle_image(80,70,width,height,colormap,icon_content,nbdata);
             } else {
-                tft_fill_rectangle(80,125,130,175,0xff,0xff,0xff);
+                tft_fill_rectangle(80,125,130,175,0x53,0xaf,0x39);
             }
             break;
         default:

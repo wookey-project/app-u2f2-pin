@@ -37,7 +37,7 @@ int get_fido_msq(void) {
 }
 
 
-bool handle_user_presence(uint16_t timeout __attribute__((unused)), uint16_t action) {
+bool handle_user_presence(uint16_t timeout __attribute__((unused)), uint16_t action __attribute__((unused))) {
     mbed_error_t errcode = MBED_ERROR_NONE;
     bool result = false;
     uint8_t appid[32] = { 0 };
@@ -54,15 +54,17 @@ bool handle_user_presence(uint16_t timeout __attribute__((unused)), uint16_t act
 #if CONFIG_APP_U2FPIN_INPUT_SCREEN
     result = request_user_presence(action, timeout, &appid_info, icon);
 #else
-    printf("[USB] userpresence: waiting for XX (FIX: timeout to add)\n");
-    sys_sleep (1000, SLEEP_MODE_INTERRUPTIBLE);
+    sys_sleep (timeout/2, SLEEP_MODE_INTERRUPTIBLE);
+    result = true;
 #endif
     if (icon != NULL) {
         wfree((void**)icon);
     }
+#if CONFIG_APP_U2FPIN_INPUT_SCREEN
     if (result == true) {
         tft_fill_rectangle(0,240,0,320,0x10,0x71,0xaa);
     }
+#endif
     return result;
 }
 
@@ -78,6 +80,7 @@ int _main(uint32_t task_id)
     uint8_t ret;
 
     printf("Hello ! I'm u2fpin, my id is %x\n", task_id);
+
 
     fido_msq = msgget("fido", IPC_CREAT | IPC_EXCL);
     if (fido_msq == -1) {
@@ -95,7 +98,7 @@ int _main(uint32_t task_id)
 #else
 # error "unsupported board for graphical interface"
 #endif
-        printf("ERROR: registering SPI1 failed.\n");
+        printf("ERROR: registering SPI failed.\n");
         while (1)
             ;
     }
@@ -122,7 +125,6 @@ int _main(uint32_t task_id)
     if ((ret = sys_init(INIT_DONE))) {
         printf("sys_init returns %s !\n", strerror(ret));
         goto err;
-
     }
 
     /*******************************************
@@ -142,6 +144,7 @@ int _main(uint32_t task_id)
     tft_fill_rectangle(0,240,0,320,0xff,0xff,0xff);
     /* FIDO logo */
     tft_rle_image(0,0,fido_width,fido_height,fido_colormap,fido,sizeof(fido));
+    wmalloc_init();
 
     printf("wait for FIDO tsk\n");
 
@@ -160,28 +163,28 @@ int _main(uint32_t task_id)
         // PetPin
         msqr = msgrcv(fido_msq, &msgbuf, 0, MAGIC_PETPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
-            printf("[u2fPIN] Pet PIN requested\n");
+            log_printf("[u2fPIN] Pet PIN requested\n");
             handle_pin(MAGIC_PETPIN_INSERT);
             goto endloop;
         }
         // PassPhrase check
         msqr = msgrcv(fido_msq, &msgbuf, 64, MAGIC_PASSPHRASE_CONFIRM, IPC_NOWAIT);
         if (msqr >= 0) {
-            printf("[u2fPIN] Pet name check requested (len:%d): %s\n", msqr, &msgbuf.mtext.c[0]);
+            log_printf("[u2fPIN] Pet name check requested (len:%d): %s\n", msqr, &msgbuf.mtext.c[0]);
             handle_petname_check(&msgbuf.mtext.c[0], msqr);
             goto endloop;
         }
         // UserPin
         msqr = msgrcv(fido_msq, &msgbuf, 0, MAGIC_USERPIN_INSERT, IPC_NOWAIT);
         if (msqr >= 0) {
-            printf("[u2fPIN] User PIN requested\n");
+            log_printf("[u2fPIN] User PIN requested\n");
             handle_pin(MAGIC_USERPIN_INSERT);
             goto endloop;
         }
         // User Presence
         msqr = msgrcv(fido_msq, &msgbuf, 32, MAGIC_USER_PRESENCE_REQ, IPC_NOWAIT);
         if (msqr >= 0) {
-            printf("[u2fpin] received user presence req from FIDO\n");
+            log_printf("[u2fpin] received user presence req from FIDO\n");
             uint16_t timeout = msgbuf.mtext.u16[0];
             uint16_t action = msgbuf.mtext.u16[1];
             bool result;
@@ -193,14 +196,14 @@ int _main(uint32_t task_id)
                 msgbuf.mtext.u16[0] = 0x0;
             }
             /* returning result */
-            printf("[u2fpin] sending back User presence ACK to FIDO\n");
+            log_printf("[u2fpin] sending back User presence ACK to FIDO\n");
             msgsnd(fido_msq, &msgbuf, 2, 0);
             goto endloop;
         }
         msqr = msgrcv(fido_msq, &msgbuf, 0, MAGIC_TOKEN_UNLOCKED, IPC_NOWAIT);
         if (msqr >= 0) {
             /* Wink request received */
-            printf("[u2fPIN] token unlocked\n");
+            log_printf("[u2fPIN] token unlocked\n");
             tft_rle_image(0,0,fido_width,fido_height,fido_colormap,fido,sizeof(fido));
             goto endloop;
         }

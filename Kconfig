@@ -50,6 +50,10 @@ config APP_U2FPIN_PRIO
 
 menu "U2FPin specific properties"
 
+config APP_U2FPIN_DEBUG
+  bool "U2FPin debug mode"
+  default n
+
 config APP_U2FPIN_MAX_PINTRIES
   int "Max number of PIN try before reset"
   range 1 3
