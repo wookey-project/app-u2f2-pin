@@ -54,7 +54,8 @@ bool handle_user_presence(uint16_t timeout __attribute__((unused)), uint16_t act
 #if CONFIG_APP_U2FPIN_INPUT_SCREEN
     result = request_user_presence(action, timeout, &appid_info, icon);
 #else
-    sys_sleep (timeout/2, SLEEP_MODE_INTERRUPTIBLE);
+//    sys_sleep (timeout/2, SLEEP_MODE_INTERRUPTIBLE);
+    printf("[emulate user presence in mockup mode\n");
     result = true;
 #endif
     if (icon != NULL) {
@@ -197,7 +198,9 @@ int _main(uint32_t task_id)
             }
             /* returning result */
             log_printf("[u2fpin] sending back User presence ACK to FIDO\n");
-            msgsnd(fido_msq, &msgbuf, 2, 0);
+            if (unlikely(msgsnd(fido_msq, &msgbuf, 2, 0) == -1)) {
+                log_printf("failed to send back ACK to FIDO ! errno=%d\n", errno);
+            }
             goto endloop;
         }
         msqr = msgrcv(fido_msq, &msgbuf, 0, MAGIC_TOKEN_UNLOCKED, IPC_NOWAIT);
