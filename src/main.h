@@ -4,7 +4,7 @@
 #include "autoconf.h"
 
 /* PIN task interactions */
-#if CONFIG_USR_APP_U2FPIN_DEBUG
+#if CONFIG_APP_U2FPIN_DEBUG
 # define log_printf(...) printf(__VA_ARGS__)
 #else
 # define log_printf(...)
