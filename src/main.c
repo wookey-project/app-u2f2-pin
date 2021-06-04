@@ -133,12 +133,23 @@ int _main(uint32_t task_id)
      * which are now memory-mapped
      *******************************************/
 
+    struct msgbuf msgbuf = { 0 };
+    ssize_t msqr;
+
+    printf("wait for FIDO is_backend_ready\n");
+    msgrcv(fido_msq, &msgbuf, 0, MAGIC_IS_BACKEND_READY, 0);
+
+    printf("initialize touch & tft\n");
     if (tft_init()) {
         printf("error during TFT initialization!\n");
     }
     if (touch_init()) {
         printf("error during Touch initialization!\n");
     }
+
+    printf("acknowledge init to fido\n");
+    msgbuf.mtype = MAGIC_BACKEND_IS_READY;
+    msgsnd(fido_msq, &msgbuf, 0, 0);
 
     printf("set screen bootimg\n");
     /* Register our callback as a valid one */
@@ -158,8 +169,6 @@ int _main(uint32_t task_id)
     printf("starting main loop\n");
 
     /* main loop */
-    struct msgbuf msgbuf = { 0 };
-    ssize_t msqr;
     while (1) {
         // PetPin
         msqr = msgrcv(fido_msq, &msgbuf, 0, MAGIC_PETPIN_INSERT, IPC_NOWAIT);
